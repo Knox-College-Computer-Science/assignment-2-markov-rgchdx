@@ -1,3 +1,5 @@
+# Richie Dix
+
 import random
 import glob
 import sys
@@ -111,9 +113,37 @@ class Babbler:
         and that any n-grams that stops a sentence should be followed by the
         special symbol 'EOL' in the state transition table. 'EOL' is short for 'end of line'; since it is capitalized and all our input texts are lower-case, it will be unambiguous.
         """
-
-        pass #The pass statement is used as a placeholder for future code. When the pass statement is executed, nothing happens, but you avoid getting an error when empty code is not allowed. Empty code is not allowed in loops, function definitions, class definitions, or in if statements.
-
+        
+        words = sentence.lower().split() #split the sentence into words and convert them to lowercase
+        #print("These are the words",words)
+        
+        # check if the sentence is too short for the given n-gram size
+        if len(words) < self.n:
+            print("Sentence is too short for the given n-gram size. Skipping...")
+            return
+        
+        # will take the first n words and then convert the list of words into a string
+        first_ngrams = " ".join(words[:self.n])
+        self.starters.append(first_ngrams)
+        
+        # add the first n-gram to the brain graph
+        for i in range(len(words) - self.n):
+            current_ngram = " ".join(words[i:i+self.n])
+            successor = words[i+self.n]  # the word that follows the current n-gram
+            if current_ngram not in self.brainGraph:
+                self.brainGraph[current_ngram] = []
+            self.brainGraph[current_ngram].append(successor)
+        
+        #print("Current brainGraph is: ",self.brainGraph)
+        
+        # will take the last n words and then convert the list of words into a string
+        last_ngrams = " ".join(words[-self.n:])
+        self.stoppers.append(last_ngrams)
+        
+        # add the last n-gram to the brain graph
+        if last_ngrams not in self.brainGraph:
+            self.brainGraph[last_ngrams] = []
+        self.brainGraph[last_ngrams].append("EOL")
 
     def get_starters(self):
         """
@@ -121,7 +151,9 @@ class Babbler:
         The resulting list may contain duplicates, because one n-gram may start
         multiple sentences. Probably a one-line method.
         """
-        pass
+        
+        print("The length of starters is: ", str(len(self.starters)))
+        return self.starters
     
 
     def get_stoppers(self):
@@ -130,7 +162,8 @@ class Babbler:
         The resulting value may contain duplicates, because one n-gram may stop
         multiple sentences. Probably a one-line method.
         """
-        pass
+        print("The length of stoppers is: ", str(len(self.stoppers)))
+        return self.stoppers
 
 
     def get_successors(self, ngram):
@@ -146,7 +179,11 @@ class Babbler:
         If the given state never occurs, return an empty list.
         """
 
-        pass
+        if ngram not in self.brainGraph:
+            return []
+        else:
+            followers = self.brainGraph[ngram]
+        return followers
     
 
     def get_all_ngrams(self):
@@ -155,7 +192,7 @@ class Babbler:
         Probably a one-line method.
         """
 
-        pass
+        return self.brainGraph.keys()
 
     
     def has_successor(self, ngram):
@@ -166,7 +203,10 @@ class Babbler:
         Probably a one-line method.
         """
 
-        pass
+        if ngram in self.brainGraph and len(self.brainGraph[ngram]) > 0:
+            return True
+        else:
+            return False
     
     
     def get_random_successor(self, ngram):
@@ -180,8 +220,40 @@ class Babbler:
         and we call get_random_next_word() for the state 'the dog dances',
         we should get 'quickly' about 1/3 of the time, and 'with' 2/3 of the time.
         """
+        
+        # check if the ngram is in the brainGraph and has successors
+        if ngram not in self.brainGraph or len(self.brainGraph[ngram]) == 0:
+            return None
+        
+        successors = self.brainGraph[ngram]
+        
+        # create a dictionary to store the relevancy of each successor
+        relevancy = {}
+        
+        # calculate the likelyhood of that word being the next word after the ngram
+        for word in successors:
+            if word not in relevancy:
+                relevancy[word] = 1
+            else: 
+                relevancy[word] += 1
+        
+        #print("relevancies are: ",relevancy)
 
-        pass
+        # calculate the total number of successors
+        # if total is 0, return "EOL"
+        total = sum(relevancy.values())
+        if total == 0:
+            return "EOL"
+        
+        #print("Successors are: ", successors)
+        #print("Relevancy is: ", relevancy)
+        #print("Total is: ", total)
+        
+        # pick a random word based on the weights
+        words = list(relevancy.keys()) 
+        weights = [relevancy[word] / total for word in words]
+        random_word = random.choices(words,weights=weights)[0]
+        return random_word
     
 
     def babble(self):
@@ -199,11 +271,26 @@ class Babbler:
         6: Repeat from step 2.
         """
 
-        pass
+        if len(self.starters) == 0:
+            return ""
+        current_ngram = random.choice(self.starters)
+        output_sentence = current_ngram
+        
+        while True:
+            next_word=self.get_random_successor(current_ngram)
+            #print(next_word)
+            if next_word == 'EOL':
+                break
+            output_sentence += " " + next_word
+            current_ngram_words = current_ngram.split()
+            current_ngram_words.pop(0)
+            current_ngram_words.append(next_word)
+            current_ngram = " ".join(current_ngram_words)
+        return output_sentence
             
 
 # nothing to change here; read, understand, move along
-def main(n=3, filename='tests/test1.txt', num_sentences=5):
+def main(n=3, filename='tests/new_test.txt', num_sentences=5):
     """
     Simple test driver.
     """
@@ -238,7 +325,7 @@ if __name__ == '__main__':
     sys.argv.pop(0) # remove the first parameter, which should be babbler.py, the name of the script
     # -------default values -----------
     n = 3
-    filename = 'tests/test1.txt'
+    filename = 'tests/new_test.txt'
     num_sentences = 5
     #----------------------------------
     if len(sys.argv) > 0: # if any argumetns are passed, first is assumed to be n
